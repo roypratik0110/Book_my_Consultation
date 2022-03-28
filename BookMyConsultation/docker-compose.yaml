@@ -1,0 +1,151 @@
+version: "3.9"
+services:
+  security-provider:
+    build: security-service
+    ports:
+      - 8088:8088
+    networks:
+      - microservicesnet
+    depends_on:
+      - mongo
+      - kafka
+      - bmc-gateway
+  user-service:
+    build: user-service
+    ports:
+      - 8082:8082
+    networks:
+      - microservicesnet
+    depends_on:
+      - mongo
+      - kafka
+      - bmc-gateway
+      - security-service
+      - notification-service
+  doctor-service:
+    build: doctor-service
+    ports:
+      - 8081:8081
+    networks:
+      - microservicesnet
+    depends_on:
+      - mongo
+      - kafka
+      - bmc-gateway
+      - security-service
+      - notification-service
+  payment-service:
+    build: payment-service
+    ports:
+      - 8084:8084
+    networks:
+      - microservicesnet
+    depends_on:
+      - mongo
+      - kafka
+      - bmc-gateway
+      - security-service
+      - notification-service
+      - user-service
+      - doctor-service
+  notification-service:
+    build: notification-service
+    ports:
+      - 8086:8086
+    networks:
+      - microservicesnet
+    depends_on:
+      - kafka
+      - bmc-gateway
+      - security-service
+  rating-service:
+    build: rating-service
+    ports:
+      - 8085:8085
+    depends_on:
+      - mongo
+      - kafka
+  bmc-gateway:
+    build: bmc-gateway
+    ports:
+      - 8087:8087
+    networks:
+      - microservicesnet
+    depends_on:
+      - mysql
+      - mongo
+      - kafka
+  appointment-service:
+    build: appointment-service
+    ports:
+      - 8083:8083
+    depends_on:
+      - mongo
+      - kafka
+      - mysql
+  mysql:
+    image: mysql
+    command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: local
+      MYSQL_USER: root
+      MYSQL_PASSWORD: pratik*1995
+      MYSQL_DATABASE: appointment
+    volumes:
+      - ./docker/provision/mysql/init:/docker-entrypoint-initdb.d
+      - db_data:/var/lib/mysql
+    networks:
+      - microservicesnet
+
+  zookeeper:
+    image: 'bitnami/zookeeper:latest'
+    volumes:
+      - "zookeeper_data:/bitnami"
+    ports:
+      - "2181:2181"
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    networks:
+      - microservicesnet
+
+  kafka:
+    image: 'bitnami/kafka:latest'
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    volumes:
+      - "kafka_data:/bitnami"
+    environment:
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    networks:
+      - microservicesnet
+
+  mongo:
+    image: mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: rootpassword
+    ports:
+      - 27017:27017
+    volumes:
+      - mongodb_data_container:/data/db
+    networks:
+      - microservicesnet
+
+volumes:
+  mongodb_data_container:  {}
+  db_data: {}
+  my-db: {}
+  zookeeper_data:
+    driver: local
+  kafka_data:
+    driver: local
+  mysql:
+    driver: local
+networks:
+  microservicesnet:
+    driver: bridge
